@@ -1,0 +1,22 @@
+{
+  "name": "MiPWA App",
+  "short_name": "MiPWa",
+  "description": "pwa para tarea 2",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3367D6",
+ 
+"icons": [
+  {
+    "src": "icons/iconoR.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  },
+  {
+    "src": "icons/iconoR2.png", 
+    "sizes": "512x512",
+    "type": "image/png"
+  }
+]
+}
