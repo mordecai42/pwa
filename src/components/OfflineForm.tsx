@@ -1,10 +1,11 @@
 // src/components/OfflineForm.tsx
 
-import React, { useEffect, useState } from 'react';
-// ¡CRÍTICO! Asegúrate que la ruta a idb.js sea correcta
+// Eliminamos 'React' de la importación, dejando solo los Hooks
+import { useEffect, useState } from 'react'; 
+// Asegúrate de que esta ruta sea correcta:
 import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb'; 
 
-// Define un tipo básico para las entradas para resolver errores de renderizado
+// Define un tipo para las entradas para resolver errores de tipado en el renderizado
 interface Entry {
     id: number;
     title: string;
@@ -12,6 +13,7 @@ interface Entry {
     createdAt: number | string;
 }
 
+// Función auxiliar (El tipado está asegurado para evitar errores de compilación)
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -31,6 +33,7 @@ export default function OfflineForm() {
 
     // ----------------------------------------------------
     async function loadEntries() {
+        // Aseguramos el tipado de la respuesta
         const all = await getAllEntries() as Entry[]; 
         setEntries(all);
     }
@@ -41,7 +44,7 @@ export default function OfflineForm() {
         const updateOnline = () => setIsOnline(navigator.onLine);
         window.addEventListener('online', updateOnline);
         window.addEventListener('offline', updateOnline);
-        loadEntries();
+        loadEntries(); 
         return () => {
             window.removeEventListener('online', updateOnline);
             window.removeEventListener('offline', updateOnline);
@@ -49,24 +52,21 @@ export default function OfflineForm() {
     }, []);
 
 
-    // Manejo de envío del formulario (Tipado para evitar error 'e' implícito)
+    // Manejo de envío del formulario (Tipado con React.FormEvent)
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) { 
         e.preventDefault();
         
-        // 1. Crear el objeto de datos con una marca de tiempo
         const baseData = { title, note, createdAt: new Date().toISOString() };
         
         if (!navigator.onLine) {
-            // OFFLINE: Guardar a IndexedDB y registrar Sync
             const offlineData = { ...baseData, id: Date.now() };
             
-            await saveEntry(offlineData);
+            await saveEntry(offlineData); 
             
-            // Registrar background sync
             if ('serviceWorker' in navigator) {
                 const reg = await navigator.serviceWorker.ready;
                 
-                // Verificación y cast para TypeScript
+                // Corrección para el error 'sync does not exist' de TS
                 if ('sync' in reg) { 
                     try {
                         await (reg as any).sync.register('sync-entries'); 
@@ -79,7 +79,7 @@ export default function OfflineForm() {
                 }
             }
             
-            setTitle(''); setNote('');
+            setTitle(''); setNote(''); 
             loadEntries();
             return;
         }
@@ -93,7 +93,6 @@ export default function OfflineForm() {
             });
             alert('Enviado al servidor correctamente.');
         } catch (err) {
-            // Fallback si la red cae justo después de la verificación inicial
             alert('Error al enviar. Guardado localmente como fallback.');
             const fallbackData = { ...baseData, id: Date.now() };
             await saveEntry(fallbackData);
@@ -110,7 +109,7 @@ export default function OfflineForm() {
         loadEntries();
     }
 
-    // Corregimos el tipo de 'id' para evitar error implícito de TS
+    // Corregimos el tipo de 'id'
     async function handleClear(id: number) { 
         await deleteEntry(id);
         loadEntries();
@@ -129,7 +128,6 @@ export default function OfflineForm() {
             const { publicKey } = await resp.json();
             const sub = await reg.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(publicKey)
             });
             await fetch('/api/subscribe', {
                 method: 'POST',
