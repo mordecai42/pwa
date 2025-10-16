@@ -1,7 +1,6 @@
 // src/components/OfflineForm.tsx
 
-// Eliminamos 'React' de la importación, dejando solo los Hooks
-import { useEffect, useState } from 'react'; 
+ 
 // Asegúrate de que esta ruta sea correcta:
 import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb'; 
 
