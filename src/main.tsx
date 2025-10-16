@@ -18,3 +18,14 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <App />
   </React.StrictMode>
 );
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      console.log('SW registrado:', reg);
+    } catch (err) {
+      console.error('Fallo registro SW:', err);
+    }
+  });
+}
