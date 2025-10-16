@@ -1,63 +1,91 @@
 // server/server.js
-require('dotenv').config();
-const express = require('express');
-const bodyParser = require('body-parser');
-const webpush = require('web-push');
+
+// Importación de dotenv y configuración inmediata
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Importaciones de ES Modules
+import express from 'express';
+// body-parser es a menudo obsoleto en Express 4.16+, ya que express tiene su propio body-parser integrado.
+// Para usar la sintaxis moderna, lo más limpio es usar express.json()
+// import bodyParser from 'body-parser'; 
+import webpush from 'web-push';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+// Reemplazo de bodyParser.json() con el middleware integrado de Express
+app.use(express.json());
 
 // VAPID keys (genera con web-push)
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  // Asegúrate de usar comillas simples o dobles para la cadena de texto
   console.warn('No VAPID keys found. Genera con: npx web-push generate-vapid-keys');
 }
 
 webpush.setVapidDetails(
-  'mailto:tu@correo.com',
+  'mailto:tu@correo.com', // **¡IMPORTANTE!** Cambia esto a tu correo real
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
 
 let subscriptions = []; // en memoria para pruebas
 
+// --- Endpoints ---
+
+// 1. Obtener clave pública VAPID
 app.get('/api/vapidPublicKey', (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
+// 2. Registrar una nueva suscripción de Push
 app.post('/api/subscribe', (req, res) => {
   const sub = req.body;
   subscriptions.push(sub);
-  console.log('Nueva suscripción:', sub.endpoint ? sub.endpoint.slice(0,60) : sub);
+  console.log('Nueva suscripción:', sub.endpoint ? sub.endpoint.slice(0, 60) + '...' : sub);
   res.status(201).json({ ok: true });
 });
 
-// sync endpoint que consumirá el SW
+// 3. Endpoint para sincronización offline (Background Sync)
 app.post('/api/sync-entries', (req, res) => {
-  const entry = req.body;
-  console.log('[SYNC-ENTRIES] recibido:', entry);
-  // aquí guardarías en BD real
-  res.status(201).json({ ok: true });
+  const entries = req.body; // Cambié 'entry' a 'entries' ya que usualmente se envían varios
+  console.log('[SYNC-ENTRIES] recibido. Número de entradas:', Array.isArray(entries) ? entries.length : 1);
+  // Aquí es donde harías la inserción real en tu base de datos (MongoDB, SQL, etc.)
+  // Por ahora, solo simula el éxito
+  res.status(201).json({ ok: true, received: Array.isArray(entries) ? entries.length : 1 });
 });
 
-// endpoint para enviar notificación a todas suscripciones (prueba)
+// 4. Endpoint para enviar notificación (para pruebas manuales)
 app.post('/api/send-notification', async (req, res) => {
-  const payload = req.body || { title:'Prueba', body:'Notificación de prueba', url:'/' };
+  // Recibe un payload opcional o usa uno por defecto
+  const payload = req.body.data || { title: 'Prueba PWA', body: 'Notificación enviada desde el servidor.', url: '/' };
+  
   const results = [];
+  // Itera sobre todas las suscripciones guardadas en memoria
   for (const sub of subscriptions) {
     try {
+      // Envía la notificación. El Service Worker la recibirá.
       await webpush.sendNotification(sub, JSON.stringify(payload));
-      results.push({ status: 'ok' });
+      results.push({ status: 'ok', endpoint: sub.endpoint.slice(0, 20) + '...' });
     } catch (err) {
-      console.error('Failed to send to subscription', err);
-      results.push({ status: 'fail', error: err.message });
+      console.error('Failed to send to subscription:', err.statusCode, err.message);
+      
+      // Manejo de suscripciones expiradas (código 410)
+      if (err.statusCode === 410) {
+        console.log('Suscripción expirada. Eliminando...');
+        subscriptions = subscriptions.filter(s => s !== sub);
+      }
+      
+      results.push({ status: 'fail', error: err.message, endpoint: sub.endpoint.slice(0, 20) + '...' });
     }
   }
-  res.json({ results });
+  
+  res.json({ results, totalSubscriptions: subscriptions.length });
 });
 
+// Iniciar el servidor
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });

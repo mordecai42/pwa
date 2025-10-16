@@ -1,6 +1,9 @@
 // src/components/OfflineForm.jsx
+// Opcionalmente: Si renombraste a .tsx, cambia la extensión del archivo y usa este código.
+
 import React, { useEffect, useState } from 'react';
-import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb';
+// ¡CRÍTICO! Asegúrate que la ruta a idb.js sea correcta
+import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb'; 
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -12,11 +15,23 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export default function OfflineForm() {
+  // ----------------------------------------------------
+  // ESTADOS (VARIABLES FALTANTES QUE CAUSABAN ERRORES)
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [entries, setEntries] = useState([]);
 
+  // ----------------------------------------------------
+  // FUNCIÓN FALTANTE QUE CAUSABA ERRORES
+  async function loadEntries() {
+    // Aquí se corrige el error "Cannot find name 'loadEntries'"
+    const all = await getAllEntries();
+    setEntries(all);
+  }
+
+  // ----------------------------------------------------
+  
   useEffect(() => {
     const updateOnline = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', updateOnline);
@@ -28,48 +43,65 @@ export default function OfflineForm() {
     };
   }, []);
 
-  async function loadEntries() {
-    const all = await getAllEntries();
-    setEntries(all);
-  }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const data = { title, note };
+  // Manejo de envío del formulario (Corregido para TypeScript)
+async function handleSubmit(e) {
+      e.preventDefault();
+    
+    // 1. Crear el objeto de datos con una marca de tiempo
+    const baseData = { title, note, createdAt: new Date().toISOString() };
+    
     if (!navigator.onLine) {
-      // save to IndexedDB
-      await saveEntry(data);
-      // register background sync
-      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      // OFFLINE: Guardar a IndexedDB y registrar Sync
+      const offlineData = { ...baseData, id: Date.now() }; // Añadimos un ID temporal!
+      
+      await saveEntry(offlineData); // Usa la función importada
+      
+      // Registrar background sync
+      if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.ready;
-        try {
-          await reg.sync.register('sync-entries');
-          alert('Guardado offline. Se sincronizará cuando haya conexión.');
-        } catch (err) {
-          console.warn('Sync register failed', err);
+        
+        // Verificación de SyncManager para compatibilidad y TS
+        if ('sync' in reg) { 
+          try {
+            await reg.sync.register('sync-entries'); 
+            alert('Guardado offline. Se sincronizará cuando haya conexión.');
+          } catch (err) {
+            console.warn('Sync register failed', err);
+          }
+        } else {
+          alert('Guardado offline. (Este navegador no soporta Background Sync).');
         }
-      } else {
-        alert('Guardado offline. (Este navegador no soporta Background Sync).');
       }
+      
+      // Limpiar y recargar (Usan las funciones 'setTitle', 'setNote' y 'loadEntries')
       setTitle(''); setNote('');
       loadEntries();
       return;
     }
 
-    // Online: enviar al servidor
+    // ONLINE: enviar al servidor directamente
     try {
       await fetch('/api/sync-entries', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(data),
+        body: JSON.stringify(baseData), 
       });
       alert('Enviado al servidor correctamente.');
     } catch (err) {
-      alert('Error al enviar. Guardado localmente.');
-      await saveEntry(data);
-      const reg = await navigator.serviceWorker.ready;
-      if ('SyncManager' in window) await reg.sync.register('sync-entries');
+      // Fallback si la red cae justo después de la verificación inicial
+      alert('Error al enviar. Guardado localmente como fallback.');
+      const fallbackData = { ...baseData, id: Date.now() };
+      await saveEntry(fallbackData);
+      
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if ('sync' in reg) {
+          await reg.sync.register('sync-entries');
+        }
+      }
     }
+    
     setTitle(''); setNote('');
     loadEntries();
   }
@@ -130,6 +162,7 @@ export default function OfflineForm() {
       {entries.length === 0 && <p>No hay entradas locales.</p>}
       <ul>
         {entries.map(en => (
+          // Usamos el id de IndexedDB como key
           <li key={en.id} style={{marginBottom:6}}>
             <strong>{en.title}</strong> — {new Date(en.createdAt).toLocaleString()}
             <div>{en.note}</div>
