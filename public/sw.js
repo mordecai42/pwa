@@ -7,7 +7,6 @@ const STATIC_ASSETS = [
   '/offline.html',
   '/styles.css',
   '/main.js',
-  // añade aquí más recursos que formen tu App Shell
 ];
 
 self.addEventListener('install', event => {
@@ -76,7 +75,6 @@ self.addEventListener('fetch', event => {
   );
 });
 
-/* ---------- IndexedDB helpers (nativo) ---------- */
 function openIDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('pwa-db', 1);
@@ -113,7 +111,6 @@ async function deleteEntryFromIDB(id) {
   });
 }
 
-/* ---------- Background Sync ---------- */
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-entries') {
     event.waitUntil(syncEntries());

@@ -6,32 +6,28 @@ dotenv.config();
 
 // Importaciones de ES Modules
 import express from 'express';
-// body-parser es a menudo obsoleto en Express 4.16+, ya que express tiene su propio body-parser integrado.
-// Para usar la sintaxis moderna, lo más limpio es usar express.json()
-// import bodyParser from 'body-parser'; 
+
 import webpush from 'web-push';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Reemplazo de bodyParser.json() con el middleware integrado de Express
 app.use(express.json());
 
 // VAPID keys (genera con web-push)
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-  // Asegúrate de usar comillas simples o dobles para la cadena de texto
   console.warn('No VAPID keys found. Genera con: npx web-push generate-vapid-keys');
 }
 
 webpush.setVapidDetails(
-  'mailto:tu@correo.com', // **¡IMPORTANTE!** Cambia esto a tu correo real
+  'mailto:tu@correo.com', 
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
 
-let subscriptions = []; // en memoria para pruebas
+let subscriptions = []; 
 
 // --- Endpoints ---
 
@@ -52,8 +48,7 @@ app.post('/api/subscribe', (req, res) => {
 app.post('/api/sync-entries', (req, res) => {
   const entries = req.body; // Cambié 'entry' a 'entries' ya que usualmente se envían varios
   console.log('[SYNC-ENTRIES] recibido. Número de entradas:', Array.isArray(entries) ? entries.length : 1);
-  // Aquí es donde harías la inserción real en tu base de datos (MongoDB, SQL, etc.)
-  // Por ahora, solo simula el éxito
+ 
   res.status(201).json({ ok: true, received: Array.isArray(entries) ? entries.length : 1 });
 });
 

@@ -1,8 +1,6 @@
 // src/components/OfflineForm.jsx
-// Opcionalmente: Si renombraste a .tsx, cambia la extensión del archivo y usa este código.
 
 import React, { useEffect, useState } from 'react';
-// ¡CRÍTICO! Asegúrate que la ruta a idb.js sea correcta
 import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb'; 
 
 function urlBase64ToUint8Array(base64String) {
@@ -15,22 +13,18 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export default function OfflineForm() {
-  // ----------------------------------------------------
-  // ESTADOS (VARIABLES FALTANTES QUE CAUSABAN ERRORES)
+
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [entries, setEntries] = useState([]);
 
-  // ----------------------------------------------------
-  // FUNCIÓN FALTANTE QUE CAUSABA ERRORES
+
   async function loadEntries() {
-    // Aquí se corrige el error "Cannot find name 'loadEntries'"
     const all = await getAllEntries();
     setEntries(all);
   }
 
-  // ----------------------------------------------------
   
   useEffect(() => {
     const updateOnline = () => setIsOnline(navigator.onLine);
@@ -44,7 +38,6 @@ export default function OfflineForm() {
   }, []);
 
 
-  // Manejo de envío del formulario (Corregido para TypeScript)
 async function handleSubmit(e) {
       e.preventDefault();
     
@@ -53,9 +46,9 @@ async function handleSubmit(e) {
     
     if (!navigator.onLine) {
       // OFFLINE: Guardar a IndexedDB y registrar Sync
-      const offlineData = { ...baseData, id: Date.now() }; // Añadimos un ID temporal!
+      const offlineData = { ...baseData, id: Date.now() }; 
       
-      await saveEntry(offlineData); // Usa la función importada
+      await saveEntry(offlineData); 
       
       // Registrar background sync
       if ('serviceWorker' in navigator) {

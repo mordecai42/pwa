@@ -1,4 +1,4 @@
-// snippet para src/index.js (al final del archivo)
+// snippet para src/index.js 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -9,4 +9,3 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-// src/index.js
