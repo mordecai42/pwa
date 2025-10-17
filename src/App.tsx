@@ -1,5 +1,4 @@
-import OfflineForm from './components/offlineForm'; 
-
+import OfflineForm from './components/OfflineForm.tsx';
 function App() {
   return ( 
     <div className="App">
