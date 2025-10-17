@@ -1,4 +1,4 @@
-import OfflineForm from './components/offlineForm';
+import OfflineForm from './components/OfflineForm';
 function App() {
   return ( 
     <div className="App">
