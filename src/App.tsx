@@ -1,7 +1,4 @@
-// src/App.tsx
-
-
-import OfflineForm from './components/OfflineForm.tsx'; 
+import OfflineForm from './components/offlineForm'; 
 
 function App() {
   return ( 

@@ -1,16 +1,10 @@
 // src/components/OfflineForm.tsx
 
- 
-// Asegúrate de que esta ruta sea correcta:
-import { saveEntry, getAllEntries, deleteEntry } from '../utils/idb'; 
+// Importamos el Hook 'FormEvent' de React para el tipado de eventos
+import { useEffect, useState, type FormEvent } from 'react'; 
+// Importamos Entry desde idb.ts (asumiendo que ahora la exporta)
+import { saveEntry, getAllEntries, deleteEntry, type Entry } from '../utils/idb'; 
 
-// Define un tipo para las entradas para resolver errores de tipado en el renderizado
-interface Entry {
-    id: number;
-    title: string;
-    note: string;
-    createdAt: number | string;
-}
 
 // Función auxiliar (El tipado está asegurado para evitar errores de compilación)
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -28,12 +22,14 @@ export default function OfflineForm() {
     const [title, setTitle] = useState('');
     const [note, setNote] = useState('');
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    // Aseguramos que 'entries' sea un array del tipo importado 'Entry'
     const [entries, setEntries] = useState<Entry[]>([]); 
 
     // ----------------------------------------------------
     async function loadEntries() {
-        // Aseguramos el tipado de la respuesta
-        const all = await getAllEntries() as Entry[]; 
+        // La coerción de tipos (as Entry[]) es innecesaria si getAllEntries() 
+        // está correctamente tipado para devolver Promise<Entry[]>
+        const all = await getAllEntries(); 
         setEntries(all);
     }
 
@@ -52,13 +48,16 @@ export default function OfflineForm() {
 
 
     // Manejo de envío del formulario (Tipado con React.FormEvent)
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) { 
+    // Usamos 'FormEvent' importado para tipar el evento
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) { 
         e.preventDefault();
         
-        const baseData = { title, note, createdAt: new Date().toISOString() };
+        // El tipo del objeto creado debe ser consistente con la interfaz Entry
+        const baseData: Omit<Entry, 'id'> = { title, note, createdAt: new Date().toISOString() };
         
         if (!navigator.onLine) {
-            const offlineData = { ...baseData, id: Date.now() };
+            // 💡 Corrección de Tipos: El objeto offlineData ahora coincide exactamente con Entry
+            const offlineData: Entry = { ...baseData, id: Date.now() };
             
             await saveEntry(offlineData); 
             
@@ -68,6 +67,7 @@ export default function OfflineForm() {
                 // Corrección para el error 'sync does not exist' de TS
                 if ('sync' in reg) { 
                     try {
+                        // Se usa as any porque TypeScript no reconoce la propiedad 'sync' nativamente
                         await (reg as any).sync.register('sync-entries'); 
                         alert('Guardado offline. Se sincronizará cuando haya conexión.');
                     } catch (err) {
@@ -93,7 +93,8 @@ export default function OfflineForm() {
             alert('Enviado al servidor correctamente.');
         } catch (err) {
             alert('Error al enviar. Guardado localmente como fallback.');
-            const fallbackData = { ...baseData, id: Date.now() };
+            // 💡 Corrección de Tipos: El objeto fallbackData ahora coincide exactamente con Entry
+            const fallbackData: Entry = { ...baseData, id: Date.now() };
             await saveEntry(fallbackData);
             
             if ('serviceWorker' in navigator) {
@@ -108,7 +109,7 @@ export default function OfflineForm() {
         loadEntries();
     }
 
-    // Corregimos el tipo de 'id'
+    // Corregimos el tipo de 'id' (Debe ser 'number' según tu interfaz Entry)
     async function handleClear(id: number) { 
         await deleteEntry(id);
         loadEntries();
@@ -125,9 +126,14 @@ export default function OfflineForm() {
         try {
             const resp = await fetch('/api/vapidPublicKey');
             const { publicKey } = await resp.json();
-            const sub = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-            });
+            
+            // 💡 Corrección: La llamada a urlBase64ToUint8Array() ya no causa error 
+            // porque está correctamente definida en el archivo y utiliza 'publicKey'
+          const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    // Coercionamos a 'BufferSource' para satisfacer al tipado de la API
+    applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
+});
             await fetch('/api/subscribe', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
@@ -165,6 +171,7 @@ export default function OfflineForm() {
                     <li key={en.id} style={{marginBottom:6}}>
                         <strong>{en.title}</strong> — {new Date(en.createdAt).toLocaleString()}
                         <div>{en.note}</div>
+                        {/* El ID es de tipo 'number' */}
                         <button onClick={()=>handleClear(en.id)}>Eliminar</button>
                     </li>
                 ))}
